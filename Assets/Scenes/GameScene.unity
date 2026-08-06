@@ -790,9 +790,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::IceCreamGameManager
   stackRoot: {fileID: 1093420298}
   coneCollector: {fileID: 1089202263}
+  coneMovement: {fileID: 2068409763}
   referenceView: {fileID: 845608543}
   stackSpacing: 0.65
   firstScoopSortingOrder: 10
+  collectCorrectScoopsDuringDash: 1
 --- !u!1 &724960335
 GameObject:
   m_ObjectHideFlags: 0
@@ -1795,6 +1797,37 @@ MonoBehaviour:
   minX: -7
   maxX: 3.5
   gameplayCamera: {fileID: 519420031}
+  dashEnabled: 1
+  dashDistance: 2.5
+  dashDuration: 0.16
+  dashCooldown: 0.7
+  invulnerableDuringDash: 1
+  dashMovementCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  dashVisualRoot: {fileID: 2068409762}
+  dashOpacity: 0.45
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

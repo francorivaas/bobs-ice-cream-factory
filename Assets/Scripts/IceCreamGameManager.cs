@@ -7,6 +7,7 @@ public class IceCreamGameManager : MonoBehaviour
     [Header("Player references")]
     [SerializeField] private Transform stackRoot;
     [SerializeField] private ConeCollector coneCollector;
+    [SerializeField] private ConeMovement coneMovement;
 
     [Header("Reference panel")]
     [SerializeField] private OrderReferenceView referenceView;
@@ -14,6 +15,14 @@ public class IceCreamGameManager : MonoBehaviour
     [Header("Stack appearance")]
     [SerializeField] private float stackSpacing = 0.65f;
     [SerializeField] private int firstScoopSortingOrder = 10;
+
+    [Header("Dash Interaction")]
+    [Tooltip(
+        "Si está activo, una bola correcta puede ser " +
+        "recogida mientras se realiza un dash."
+    )]
+    [SerializeField]
+    private bool collectCorrectScoopsDuringDash = true;
 
     private readonly List<ScoopColorType> scoopOrder =
         new List<ScoopColorType>();
@@ -26,15 +35,30 @@ public class IceCreamGameManager : MonoBehaviour
     private bool isComplete;
     private bool collectionEnabled;
 
-    // Eventos
     public event Action OrderCompleted;
     public event Action WrongScoopCollected;
 
     public bool IsComplete => isComplete;
     public bool IsCollectionEnabled => collectionEnabled;
 
-    public int CurrentOrderLength => scoopOrder.Count;
-    public int CollectedScoopCount => currentOrderIndex;
+    public int CurrentOrderLength =>
+        scoopOrder.Count;
+
+    public int CollectedScoopCount =>
+        currentOrderIndex;
+
+    private void Awake()
+    {
+        if (coneMovement == null)
+        {
+            coneMovement =
+                FindFirstObjectByType<ConeMovement>();
+        }
+    }
+
+    // --------------------------------------------------
+    // ORDER
+    // --------------------------------------------------
 
     public void PrepareOrder(
         IReadOnlyList<ScoopColorType> newOrder)
@@ -47,7 +71,8 @@ public class IceCreamGameManager : MonoBehaviour
 
         scoopOrder.Clear();
 
-        if (newOrder == null || newOrder.Count == 0)
+        if (newOrder == null ||
+            newOrder.Count == 0)
         {
             Debug.LogError(
                 "IceCreamGameManager recibió una secuencia vacía.",
@@ -64,7 +89,9 @@ public class IceCreamGameManager : MonoBehaviour
 
         if (referenceView != null)
         {
-            referenceView.BuildReference(scoopOrder);
+            referenceView.BuildReference(
+                scoopOrder
+            );
         }
 
         if (coneCollector != null)
@@ -73,7 +100,8 @@ public class IceCreamGameManager : MonoBehaviour
         }
 
         Debug.Log(
-            $"Pedido preparado. Primera bola: {scoopOrder[0]}"
+            $"Pedido preparado. " +
+            $"Primera bola: {scoopOrder[0]}"
         );
     }
 
@@ -93,8 +121,8 @@ public class IceCreamGameManager : MonoBehaviour
         collectionEnabled = true;
 
         Debug.Log(
-            $"Pedido iniciado. Se espera: " +
-            $"{scoopOrder[currentOrderIndex]}"
+            $"Pedido iniciado. " +
+            $"Se espera: {scoopOrder[currentOrderIndex]}"
         );
     }
 
@@ -106,25 +134,35 @@ public class IceCreamGameManager : MonoBehaviour
     public bool TryGetCurrentRequiredColor(
         out ScoopColorType requiredColor)
     {
-        if (scoopOrder.Count == 0 ||
+        if (
+            scoopOrder.Count == 0 ||
             isComplete ||
-            currentOrderIndex >= scoopOrder.Count)
+            currentOrderIndex >= scoopOrder.Count
+        )
         {
             requiredColor = default;
             return false;
         }
 
-        requiredColor = scoopOrder[currentOrderIndex];
+        requiredColor =
+            scoopOrder[currentOrderIndex];
 
         return true;
     }
 
-    public void TryCollectScoop(FallingScoop scoop)
+    // --------------------------------------------------
+    // COLLISION
+    // --------------------------------------------------
+
+    public void TryCollectScoop(
+        FallingScoop scoop)
     {
-        if (!collectionEnabled ||
+        if (
+            !collectionEnabled ||
             isComplete ||
             scoop == null ||
-            scoop.IsResolved)
+            scoop.IsResolved
+        )
         {
             return;
         }
@@ -135,6 +173,35 @@ public class IceCreamGameManager : MonoBehaviour
             return;
         }
 
+        bool playerIsInvulnerable =
+            coneMovement != null &&
+            coneMovement.IsInvulnerable;
+
+        // ------------------------------------------------
+        // DASH
+        // ------------------------------------------------
+
+        if (playerIsInvulnerable)
+        {
+            // Bola incorrecta:
+            // simplemente atraviesa al jugador.
+            if (scoop.ColorType != requiredColor)
+            {
+                return;
+            }
+
+            // Podemos decidir desde Inspector
+            // si las correctas también se ignoran.
+            if (!collectCorrectScoopsDuringDash)
+            {
+                return;
+            }
+        }
+
+        // ------------------------------------------------
+        // NORMAL
+        // ------------------------------------------------
+
         if (scoop.ColorType != requiredColor)
         {
             HandleWrongScoop(scoop);
@@ -144,12 +211,20 @@ public class IceCreamGameManager : MonoBehaviour
         CollectCorrectScoop(scoop);
     }
 
-    private void CollectCorrectScoop(FallingScoop scoop)
+    // --------------------------------------------------
+    // CORRECT SCOOP
+    // --------------------------------------------------
+
+    private void CollectCorrectScoop(
+        FallingScoop scoop)
     {
-        int stackIndex = currentOrderIndex;
+        int stackIndex =
+            currentOrderIndex;
 
         Vector3 localPosition =
-            Vector3.up * stackSpacing * stackIndex;
+            Vector3.up *
+            stackSpacing *
+            stackIndex;
 
         scoop.Collect(
             stackRoot,
@@ -161,14 +236,18 @@ public class IceCreamGameManager : MonoBehaviour
 
         if (referenceView != null)
         {
-            referenceView.MarkCollected(stackIndex);
+            referenceView.MarkCollected(
+                stackIndex
+            );
         }
 
         currentOrderIndex++;
 
         if (coneCollector != null)
         {
-            coneCollector.SetStackLevel(currentOrderIndex);
+            coneCollector.SetStackLevel(
+                currentOrderIndex
+            );
         }
 
         if (currentOrderIndex >= scoopOrder.Count)
@@ -178,11 +257,17 @@ public class IceCreamGameManager : MonoBehaviour
         }
 
         Debug.Log(
-            $"Siguiente bola: {scoopOrder[currentOrderIndex]}"
+            $"Siguiente bola: " +
+            $"{scoopOrder[currentOrderIndex]}"
         );
     }
 
-    private void HandleWrongScoop(FallingScoop scoop)
+    // --------------------------------------------------
+    // WRONG SCOOP
+    // --------------------------------------------------
+
+    private void HandleWrongScoop(
+        FallingScoop scoop)
     {
         Debug.Log(
             $"Incorrecta. Se esperaba " +
@@ -190,12 +275,12 @@ public class IceCreamGameManager : MonoBehaviour
             $"pero llegó {scoop.ColorType}."
         );
 
-        // Eliminamos la bola equivocada.
         scoop.Reject();
 
-        // Avisamos al sistema de vidas.
         WrongScoopCollected?.Invoke();
     }
+
+    // --------------------------------------------------
 
     private void CompleteOrder()
     {
@@ -209,12 +294,15 @@ public class IceCreamGameManager : MonoBehaviour
 
     private void ClearCollectedScoops()
     {
-        for (int i = 0; i < collectedScoops.Count; i++)
+        for (int i = 0;
+             i < collectedScoops.Count;
+             i++)
         {
             if (collectedScoops[i] != null)
             {
                 Destroy(
-                    collectedScoops[i].gameObject
+                    collectedScoops[i]
+                        .gameObject
                 );
             }
         }
