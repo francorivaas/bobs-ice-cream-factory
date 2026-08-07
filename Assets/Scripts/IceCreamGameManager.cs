@@ -18,8 +18,7 @@ public class IceCreamGameManager : MonoBehaviour
 
     [Header("Dash Interaction")]
     [Tooltip(
-        "Si está activo, una bola correcta puede ser " +
-        "recogida mientras se realiza un dash."
+        "Permite recoger bolas correctas y doradas durante el dash."
     )]
     [SerializeField]
     private bool collectCorrectScoopsDuringDash = true;
@@ -36,6 +35,9 @@ public class IceCreamGameManager : MonoBehaviour
     private bool collectionEnabled;
 
     public event Action OrderCompleted;
+
+    // LivesManager escucha indirectamente este evento
+    // desde IceCreamLevelManager.
     public event Action WrongScoopCollected;
 
     public bool IsComplete => isComplete;
@@ -100,8 +102,7 @@ public class IceCreamGameManager : MonoBehaviour
         }
 
         Debug.Log(
-            $"Pedido preparado. " +
-            $"Primera bola: {scoopOrder[0]}"
+            $"Pedido preparado. Primera bola: {scoopOrder[0]}"
         );
     }
 
@@ -121,8 +122,8 @@ public class IceCreamGameManager : MonoBehaviour
         collectionEnabled = true;
 
         Debug.Log(
-            $"Pedido iniciado. " +
-            $"Se espera: {scoopOrder[currentOrderIndex]}"
+            $"Pedido iniciado. Se espera: " +
+            $"{scoopOrder[currentOrderIndex]}"
         );
     }
 
@@ -177,30 +178,64 @@ public class IceCreamGameManager : MonoBehaviour
             coneMovement != null &&
             coneMovement.IsInvulnerable;
 
-        // ------------------------------------------------
-        // DASH
-        // ------------------------------------------------
+        SpecialScoop specialScoop =
+            scoop.GetComponent<SpecialScoop>();
+
+        // --------------------------------------------------
+        // SPECIAL SCOOPS
+        // --------------------------------------------------
+
+        if (specialScoop != null)
+        {
+            switch (specialScoop.Type)
+            {
+                case SpecialScoopType.Bomb:
+
+                    // Durante el dash la bomba
+                    // simplemente atraviesa al jugador.
+                    if (playerIsInvulnerable)
+                    {
+                        return;
+                    }
+
+                    HandleBombScoop(scoop);
+                    return;
+
+                case SpecialScoopType.Golden:
+
+                    // La bola dorada equivale siempre
+                    // a la próxima bola correcta.
+
+                    if (
+                        playerIsInvulnerable &&
+                        !collectCorrectScoopsDuringDash
+                    )
+                    {
+                        return;
+                    }
+
+                    HandleGoldenScoop(scoop);
+                    return;
+            }
+        }
+
+        // --------------------------------------------------
+        // NORMAL SCOOPS
+        // --------------------------------------------------
 
         if (playerIsInvulnerable)
         {
-            // Bola incorrecta:
-            // simplemente atraviesa al jugador.
+            // Las incorrectas atraviesan el jugador.
             if (scoop.ColorType != requiredColor)
             {
                 return;
             }
 
-            // Podemos decidir desde Inspector
-            // si las correctas también se ignoran.
             if (!collectCorrectScoopsDuringDash)
             {
                 return;
             }
         }
-
-        // ------------------------------------------------
-        // NORMAL
-        // ------------------------------------------------
 
         if (scoop.ColorType != requiredColor)
         {
@@ -209,6 +244,64 @@ public class IceCreamGameManager : MonoBehaviour
         }
 
         CollectCorrectScoop(scoop);
+    }
+
+    // --------------------------------------------------
+    // GOLDEN
+    // --------------------------------------------------
+
+    private void HandleGoldenScoop(
+        FallingScoop scoop)
+    {
+        Debug.Log(
+            $"¡Comodín dorado! Sustituye a " +
+            $"{scoopOrder[currentOrderIndex]}."
+        );
+
+        // Se trata exactamente como una bola correcta.
+        // No modificamos su SpriteRenderer, por lo que
+        // seguirá viéndose dorada al quedar apilada.
+        CollectCorrectScoop(scoop);
+    }
+
+    // --------------------------------------------------
+    // BOMB
+    // --------------------------------------------------
+
+    private void HandleBombScoop(
+        FallingScoop scoop)
+    {
+        Debug.Log(
+            "¡BOMBA! El helado actual ha sido destruido."
+        );
+
+        // Destruimos la bomba.
+        scoop.Reject();
+
+        // Destruimos todas las bolas acumuladas
+        // y volvemos al inicio del mismo pedido.
+        ResetCurrentProgress();
+
+        // Quitamos UNA única vida.
+        WrongScoopCollected?.Invoke();
+    }
+
+    // --------------------------------------------------
+    // NORMAL WRONG SCOOP
+    // --------------------------------------------------
+
+    private void HandleWrongScoop(
+        FallingScoop scoop)
+    {
+        Debug.Log(
+            $"Incorrecta. Se esperaba " +
+            $"{scoopOrder[currentOrderIndex]}, " +
+            $"pero llegó {scoop.ColorType}."
+        );
+
+        scoop.Reject();
+
+        WrongScoopCollected?.Invoke();
     }
 
     // --------------------------------------------------
@@ -263,21 +356,39 @@ public class IceCreamGameManager : MonoBehaviour
     }
 
     // --------------------------------------------------
-    // WRONG SCOOP
+    // RESET DEL HELADO
     // --------------------------------------------------
 
-    private void HandleWrongScoop(
-        FallingScoop scoop)
+    public void ResetCurrentProgress()
     {
-        Debug.Log(
-            $"Incorrecta. Se esperaba " +
-            $"{scoopOrder[currentOrderIndex]}, " +
-            $"pero llegó {scoop.ColorType}."
-        );
+        bool wasCollectionEnabled =
+            collectionEnabled;
 
-        scoop.Reject();
+        ClearCollectedScoops();
 
-        WrongScoopCollected?.Invoke();
+        currentOrderIndex = 0;
+        isComplete = false;
+
+        collectionEnabled =
+            wasCollectionEnabled;
+
+        if (referenceView != null)
+        {
+            referenceView.ResetProgress();
+        }
+
+        if (coneCollector != null)
+        {
+            coneCollector.SetStackLevel(0);
+        }
+
+        if (scoopOrder.Count > 0)
+        {
+            Debug.Log(
+                $"Helado destruido. Volvemos a: " +
+                $"{scoopOrder[0]}"
+            );
+        }
     }
 
     // --------------------------------------------------
@@ -294,9 +405,11 @@ public class IceCreamGameManager : MonoBehaviour
 
     private void ClearCollectedScoops()
     {
-        for (int i = 0;
-             i < collectedScoops.Count;
-             i++)
+        for (
+            int i = 0;
+            i < collectedScoops.Count;
+            i++
+        )
         {
             if (collectedScoops[i] != null)
             {
