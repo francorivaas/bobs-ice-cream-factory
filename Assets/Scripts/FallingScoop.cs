@@ -5,6 +5,9 @@ using UnityEngine;
 [RequireComponent(typeof(Collider2D))]
 public class FallingScoop : MonoBehaviour
 {
+    [Header("Scoop Identity")]
+    [SerializeField] private ScoopColorType colorType;
+
     [Header("Components")]
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Rigidbody2D rigidBody;
@@ -13,8 +16,11 @@ public class FallingScoop : MonoBehaviour
     [Header("Cleanup")]
     [SerializeField] private float destroyBelowY = -8f;
 
-    public ScoopColorType ColorType { get; private set; }
+    public ScoopColorType ColorType => colorType;
+
     public bool IsResolved { get; private set; }
+
+    public SpriteRenderer SpriteRenderer => spriteRenderer;
 
     private void Reset()
     {
@@ -37,18 +43,11 @@ public class FallingScoop : MonoBehaviour
 
     private void Update()
     {
-        if (!IsResolved && transform.position.y < destroyBelowY)
+        if (!IsResolved &&
+            transform.position.y < destroyBelowY)
         {
             Destroy(gameObject);
         }
-    }
-
-    public void Configure(ScoopColorType newColor)
-    {
-        ColorType = newColor;
-        spriteRenderer.color = ScoopColorPalette.GetColor(newColor);
-
-        name = "Scoop_" + newColor;
     }
 
     public void Collect(
@@ -65,10 +64,15 @@ public class FallingScoop : MonoBehaviour
         scoopCollider.enabled = false;
 
         transform.SetParent(stackParent, false);
-        transform.localPosition = localStackPosition;
-        transform.localRotation = Quaternion.identity;
 
-        spriteRenderer.sortingOrder = sortingOrder;
+        transform.localPosition =
+            localStackPosition;
+
+        transform.localRotation =
+            Quaternion.identity;
+
+        spriteRenderer.sortingOrder =
+            sortingOrder;
     }
 
     public void Reject()
@@ -77,6 +81,7 @@ public class FallingScoop : MonoBehaviour
             return;
 
         IsResolved = true;
+
         Destroy(gameObject);
     }
 }

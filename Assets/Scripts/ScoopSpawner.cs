@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class ScoopSpawner : MonoBehaviour
 {
@@ -12,12 +12,25 @@ public class ScoopSpawner : MonoBehaviour
         Golden
     }
 
-    [Header("Prefabs")]
+    // --------------------------------------------------
+    // NORMAL SCOOP PREFAB ENTRY
+    // --------------------------------------------------
 
-    [FormerlySerializedAs("scoopPrefab")]
+    [Serializable]
+    private class NormalScoopPrefab
+    {
+        public ScoopColorType color;
+        public FallingScoop prefab;
+    }
+
+    // --------------------------------------------------
+
+    [Header("Normal Scoop Prefabs")]
     [SerializeField]
-    private FallingScoop normalScoopPrefab;
+    private List<NormalScoopPrefab> normalScoopPrefabs =
+        new List<NormalScoopPrefab>();
 
+    [Header("Special Prefabs")]
     [SerializeField]
     private FallingScoop bombScoopPrefab;
 
@@ -43,50 +56,33 @@ public class ScoopSpawner : MonoBehaviour
 
     [Header("Spawn Weights")]
 
-    [Tooltip(
-        "Peso relativo de una bola normal."
-    )]
     [Min(0f)]
-    [SerializeField] private float normalWeight = 85f;
+    [SerializeField] private float normalWeight = 90f;
 
-    [Tooltip(
-        "Peso relativo de aparición de la bomba."
-    )]
     [Min(0f)]
-    [SerializeField] private float bombWeight = 10f;
+    [SerializeField] private float bombWeight = 7f;
 
-    [Tooltip(
-        "Peso relativo de aparición de la bola dorada."
-    )]
     [Min(0f)]
-    [SerializeField] private float goldenWeight = 5f;
+    [SerializeField] private float goldenWeight = 3f;
 
     // --------------------------------------------------
 
     [Header("Normal Scoop Settings")]
 
     [Tooltip(
-        "Cuando aparece una bola normal, probabilidad " +
-        "de que sea específicamente el color requerido."
+        "Probabilidad de que una bola normal sea " +
+        "exactamente el color que necesita el jugador."
     )]
     [Range(0f, 1f)]
     [SerializeField]
     private float requiredColorChance = 0.35f;
-
-    private ScoopColorType[] availableColors;
 
     private Coroutine spawnCoroutine;
 
     public bool IsSpawning =>
         spawnCoroutine != null;
 
-    private void Awake()
-    {
-        availableColors =
-            (ScoopColorType[])Enum.GetValues(
-                typeof(ScoopColorType)
-            );
-    }
+    // --------------------------------------------------
 
     private void OnDisable()
     {
@@ -113,6 +109,9 @@ public class ScoopSpawner : MonoBehaviour
         spawnCoroutine = null;
     }
 
+    // --------------------------------------------------
+
+    [Obsolete]
     public void ClearLooseScoops()
     {
         FallingScoop[] scoops =
@@ -124,14 +123,10 @@ public class ScoopSpawner : MonoBehaviour
         {
             FallingScoop scoop = scoops[i];
 
-            if (
-                scoop != null &&
-                !scoop.IsResolved
-            )
+            if (scoop != null &&
+                !scoop.IsResolved)
             {
-                Destroy(
-                    scoop.gameObject
-                );
+                Destroy(scoop.gameObject);
             }
         }
     }
@@ -168,19 +163,6 @@ public class ScoopSpawner : MonoBehaviour
         SpawnType spawnType =
             SelectSpawnType();
 
-        FallingScoop prefab =
-            GetPrefabForSpawnType(spawnType);
-
-        if (prefab == null)
-        {
-            Debug.LogWarning(
-                $"No existe prefab para {spawnType}.",
-                this
-            );
-
-            return;
-        }
-
         float randomX =
             UnityEngine.Random.Range(
                 minimumX,
@@ -194,6 +176,143 @@ public class ScoopSpawner : MonoBehaviour
                 0f
             );
 
+        switch (spawnType)
+        {
+            case SpawnType.Normal:
+                SpawnNormalScoop(spawnPosition);
+                break;
+
+            case SpawnType.Bomb:
+                SpawnSpecialScoop(
+                    bombScoopPrefab,
+                    spawnPosition,
+                    SpecialScoopType.Bomb
+                );
+                break;
+
+            case SpawnType.Golden:
+                SpawnSpecialScoop(
+                    goldenScoopPrefab,
+                    spawnPosition,
+                    SpecialScoopType.Golden
+                );
+                break;
+        }
+    }
+
+    // --------------------------------------------------
+    // NORMAL SCOOPS
+    // --------------------------------------------------
+
+    private void SpawnNormalScoop(
+        Vector3 spawnPosition)
+    {
+        if (normalScoopPrefabs == null ||
+            normalScoopPrefabs.Count == 0)
+        {
+            Debug.LogError(
+                "No hay prefabs normales configurados.",
+                this
+            );
+
+            return;
+        }
+
+        ScoopColorType selectedColor =
+            SelectNormalColor();
+
+        FallingScoop selectedPrefab =
+            GetPrefabForColor(selectedColor);
+
+        if (selectedPrefab == null)
+        {
+            Debug.LogError(
+                $"No existe prefab para el color " +
+                $"{selectedColor}.",
+                this
+            );
+
+            return;
+        }
+
+        Instantiate(
+            selectedPrefab,
+            spawnPosition,
+            Quaternion.identity
+        );
+    }
+
+    private ScoopColorType SelectNormalColor()
+    {
+        // Primero decidimos si queremos ayudar al jugador
+        // generando el color requerido.
+        bool spawnRequiredColor =
+            UnityEngine.Random.value <
+            requiredColorChance;
+
+        if (
+            spawnRequiredColor &&
+            gameManager != null &&
+            gameManager.TryGetCurrentRequiredColor(
+                out ScoopColorType requiredColor
+            ) &&
+            GetPrefabForColor(requiredColor) != null
+        )
+        {
+            return requiredColor;
+        }
+
+        // De lo contrario elegimos cualquiera
+        // de los prefabs configurados.
+        int randomIndex =
+            UnityEngine.Random.Range(
+                0,
+                normalScoopPrefabs.Count
+            );
+
+        return normalScoopPrefabs[
+            randomIndex
+        ].color;
+    }
+
+    private FallingScoop GetPrefabForColor(
+        ScoopColorType color)
+    {
+        for (int i = 0;
+             i < normalScoopPrefabs.Count;
+             i++)
+        {
+            NormalScoopPrefab entry =
+                normalScoopPrefabs[i];
+
+            if (entry.color == color)
+            {
+                return entry.prefab;
+            }
+        }
+
+        return null;
+    }
+
+    // --------------------------------------------------
+    // SPECIAL SCOOPS
+    // --------------------------------------------------
+
+    private void SpawnSpecialScoop(
+        FallingScoop prefab,
+        Vector3 spawnPosition,
+        SpecialScoopType type)
+    {
+        if (prefab == null)
+        {
+            Debug.LogWarning(
+                $"No hay prefab configurado para {type}.",
+                this
+            );
+
+            return;
+        }
+
         FallingScoop newScoop =
             Instantiate(
                 prefab,
@@ -201,44 +320,31 @@ public class ScoopSpawner : MonoBehaviour
                 Quaternion.identity
             );
 
-        switch (spawnType)
+        SpecialScoop special =
+            newScoop.GetComponent<SpecialScoop>();
+
+        if (special == null)
         {
-            case SpawnType.Normal:
+            Debug.LogError(
+                $"El prefab {prefab.name} necesita " +
+                $"un componente SpecialScoop.",
+                prefab
+            );
 
-                newScoop.Configure(
-                    SelectNormalColor()
-                );
+            Destroy(newScoop.gameObject);
 
-                break;
-
-            case SpawnType.Bomb:
-
-                ConfigureSpecialScoop(
-                    newScoop,
-                    SpecialScoopType.Bomb
-                );
-
-                break;
-
-            case SpawnType.Golden:
-
-                ConfigureSpecialScoop(
-                    newScoop,
-                    SpecialScoopType.Golden
-                );
-
-                break;
+            return;
         }
     }
 
     // --------------------------------------------------
-    // WEIGHTED RANDOM
+    // WEIGHTS
     // --------------------------------------------------
 
     private SpawnType SelectSpawnType()
     {
         float effectiveNormalWeight =
-            normalScoopPrefab != null
+            normalScoopPrefabs.Count > 0
                 ? normalWeight
                 : 0f;
 
@@ -257,7 +363,6 @@ public class ScoopSpawner : MonoBehaviour
             effectiveBombWeight +
             effectiveGoldenWeight;
 
-        // Seguridad.
         if (totalWeight <= 0f)
         {
             return SpawnType.Normal;
@@ -269,7 +374,6 @@ public class ScoopSpawner : MonoBehaviour
                 totalWeight
             );
 
-        // NORMAL
         if (roll < effectiveNormalWeight)
         {
             return SpawnType.Normal;
@@ -277,79 +381,11 @@ public class ScoopSpawner : MonoBehaviour
 
         roll -= effectiveNormalWeight;
 
-        // BOMB
         if (roll < effectiveBombWeight)
         {
             return SpawnType.Bomb;
         }
 
-        // GOLDEN
         return SpawnType.Golden;
-    }
-
-    // --------------------------------------------------
-
-    private FallingScoop GetPrefabForSpawnType(
-        SpawnType spawnType)
-    {
-        switch (spawnType)
-        {
-            case SpawnType.Bomb:
-                return bombScoopPrefab;
-
-            case SpawnType.Golden:
-                return goldenScoopPrefab;
-
-            default:
-                return normalScoopPrefab;
-        }
-    }
-
-    // --------------------------------------------------
-
-    private ScoopColorType SelectNormalColor()
-    {
-        bool spawnRequiredColor =
-            UnityEngine.Random.value <
-            requiredColorChance;
-
-        if (
-            spawnRequiredColor &&
-            gameManager != null &&
-            gameManager.TryGetCurrentRequiredColor(
-                out ScoopColorType requiredColor
-            )
-        )
-        {
-            return requiredColor;
-        }
-
-        int randomIndex =
-            UnityEngine.Random.Range(
-                0,
-                availableColors.Length
-            );
-
-        return availableColors[randomIndex];
-    }
-
-    // --------------------------------------------------
-
-    private void ConfigureSpecialScoop(
-        FallingScoop scoop,
-        SpecialScoopType type)
-    {
-        SpecialScoop special =
-            scoop.GetComponent<SpecialScoop>();
-
-        if (special == null)
-        {
-            special =
-                scoop.gameObject.AddComponent<
-                    SpecialScoop
-                >();
-        }
-
-        special.Configure(type);
     }
 }

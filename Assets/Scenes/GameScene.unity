@@ -285,7 +285,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af82f93b5fa6f904394ea6dbaa095e83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScoopSpawner
-  normalScoopPrefab: {fileID: 1064999589866384342, guid: 2841051695f620e49b55f59226ddc6dd, type: 3}
+  normalScoopPrefabs:
+  - color: 0
+    prefab: {fileID: 1064999589866384342, guid: 2841051695f620e49b55f59226ddc6dd, type: 3}
+  - color: 0
+    prefab: {fileID: 1064999589866384342, guid: ca21182b03e67934eb3c11903b22ab86, type: 3}
+  - color: 0
+    prefab: {fileID: 1064999589866384342, guid: 180f61b45e95e7b498be8b5f220672b6, type: 3}
+  - color: 0
+    prefab: {fileID: 1064999589866384342, guid: e053162e9d5683747bf72f76f4573d59, type: 3}
   bombScoopPrefab: {fileID: 1064999589866384342, guid: 8c8e4247b14134d42af38f053d48d821, type: 3}
   goldenScoopPrefab: {fileID: 1064999589866384342, guid: 5c78c3c615ecac04ab3160a12804f35d, type: 3}
   gameManager: {fileID: 720946274}
@@ -795,7 +803,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::IceCreamGameManager
   stackRoot: {fileID: 1093420298}
   coneCollector: {fileID: 1089202263}
-  coneMovement: {fileID: 0}
+  coneMovement: {fileID: 2068409763}
   referenceView: {fileID: 845608543}
   stackSpacing: 0.65
   firstScoopSortingOrder: 10
@@ -966,6 +974,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OrderReferenceView
   listRoot: {fileID: 1715347270}
   referenceScoopPrefab: {fileID: 8830569793218908322, guid: 16f96dc58745aa442a048b13fe29432d, type: 3}
+  scoopSprites: []
   verticalSpacing: 85
   completedAlpha: 0.25
   completedScale: 0.85
