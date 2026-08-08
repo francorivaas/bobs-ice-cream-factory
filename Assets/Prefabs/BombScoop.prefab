@@ -85,8 +85,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  m_Color: {r: 0, g: 0, b: 0, a: 1}
+  m_Sprite: {fileID: -42379341264751087, guid: 7b773d85f7b85df419dd3fe1b44ba4eb, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -171,6 +171,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1ac2bf5f33fbfc42b8fc5d871420fea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FallingScoop
+  colorType: 0
   spriteRenderer: {fileID: 9082568006613549734}
   rigidBody: {fileID: 5400789153922780308}
   scoopCollider: {fileID: 1386523710328103718}

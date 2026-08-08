@@ -286,11 +286,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScoopSpawner
   normalScoopPrefabs:
-  - color: 0
+  - color: 3
     prefab: {fileID: 1064999589866384342, guid: 2841051695f620e49b55f59226ddc6dd, type: 3}
-  - color: 0
+  - color: 1
     prefab: {fileID: 1064999589866384342, guid: ca21182b03e67934eb3c11903b22ab86, type: 3}
-  - color: 0
+  - color: 2
     prefab: {fileID: 1064999589866384342, guid: 180f61b45e95e7b498be8b5f220672b6, type: 3}
   - color: 0
     prefab: {fileID: 1064999589866384342, guid: e053162e9d5683747bf72f76f4573d59, type: 3}
